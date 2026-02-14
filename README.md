@@ -7,7 +7,7 @@ There are no external audio files (MP3/WAV) — every sound is synthesized in re
 
 
 ## 🚀 Live Demo
-> [**Click here to play the piano!**](https://your-username.github.io/your-repo-name/)  
+> [**Click here to play the piano!**](https://velvet-keys.netlify.app)  
 *(Replace this link after you enable GitHub Pages)*
 
 ## ✨ Features
