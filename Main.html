@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smooth Synth Piano</title>
+    <style>
+        :root {
+            --bg-grad: radial-gradient(circle at center, #2b323c 0%, #1a1d23 100%);
+            --piano-black: #000000;
+            --piano-white: #ffffff;
+            --active-color: #ffd700;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: var(--bg-grad);
+            font-family: system-ui, -apple-system, sans-serif;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .piano-wrapper {
+            position: relative;
+            padding: 40px 40px 20px 40px;
+            background: #111;
+            border-radius: 20px;
+            box-shadow: 
+                0 30px 60px rgba(0,0,0,0.6),
+                inset 0 1px 1px rgba(255,255,255,0.2);
+        }
+
+        .brand {
+            text-align: center;
+            color: #555;
+            font-size: 14px;
+            letter-spacing: 4px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .keys-container {
+            display: flex;
+            position: relative;
+        }
+
+        .key {
+            position: relative;
+            width: 60px;
+            height: 220px;
+            background: var(--piano-white);
+            border-radius: 0 0 6px 6px;
+            margin: 0 2px;
+            box-shadow: 
+                inset 0 -5px 10px rgba(0,0,0,0.1),
+                0 2px 5px rgba(0,0,0,0.2);
+            cursor: pointer;
+            z-index: 1;
+            transition: background 0.1s, transform 0.05s;
+        }
+
+        .key:active, .key.active {
+            transform: translateY(3px);
+            background: #f4f4f4;
+            box-shadow: inset 0 -2px 5px rgba(0,0,0,0.2);
+            border-bottom: 1px solid #ddd;
+        }
+
+        .key.black {
+            position: absolute;
+            top: 0;
+            width: 36px;
+            height: 130px;
+            background: linear-gradient(to bottom, #222 0%, #000 100%);
+            color: white;
+            z-index: 2;
+            margin-left: -20px;
+            border-radius: 0 0 5px 5px;
+            box-shadow: 
+                2px 2px 5px rgba(0,0,0,0.4),
+                inset 0 -3px 5px rgba(255,255,255,0.1);
+        }
+
+        .key.black:active, .key.black.active {
+            transform: translateY(3px);
+            background: #000;
+        }
+
+        .key[data-note="Cs4"] { left: 64px; }
+        .key[data-note="Ds4"] { left: 128px; }
+        .key[data-note="Fs4"] { left: 256px; }
+        .key[data-note="Gs4"] { left: 320px; }
+        .key[data-note="As4"] { left: 384px; }
+
+        .hint {
+            position: absolute;
+            bottom: 15px;
+            width: 100%;
+            text-align: center;
+            font-size: 10px;
+            color: #aaa;
+            pointer-events: none;
+        }
+        
+        .key.black .hint {
+            bottom: 10px;
+            color: #666;
+        }
+
+        .instructions {
+            margin-top: 30px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="piano-wrapper">
+        <div class="brand">Smooth Synth</div>
+        <div class="keys-container">
+            <div class="key" data-note="C4" data-key="a"><span class="hint">A</span></div>
+            <div class="key" data-note="D4" data-key="s"><span class="hint">S</span></div>
+            <div class="key" data-note="E4" data-key="d"><span class="hint">D</span></div>
+            <div class="key" data-note="F4" data-key="f"><span class="hint">F</span></div>
+            <div class="key" data-note="G4" data-key="g"><span class="hint">G</span></div>
+            <div class="key" data-note="A4" data-key="h"><span class="hint">H</span></div>
+            <div class="key" data-note="B4" data-key="j"><span class="hint">J</span></div>
+            <div class="key" data-note="C5" data-key="k"><span class="hint">K</span></div>
+
+            <div class="key black" data-note="Cs4" data-key="w"><span class="hint">W</span></div>
+            <div class="key black" data-note="Ds4" data-key="e"><span class="hint">E</span></div>
+            <div class="key black" data-note="Fs4" data-key="t"><span class="hint">T</span></div>
+            <div class="key black" data-note="Gs4" data-key="y"><span class="hint">Y</span></div>
+            <div class="key black" data-note="As4" data-key="u"><span class="hint">U</span></div>
+        </div>
+        <div class="instructions">Click keys or use keyboard</div>
+    </div>
+
+    <script>
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioContext();
+
+        const frequencies = {
+            "C4": 261.63, "Cs4": 277.18, "D4": 293.66, "Ds4": 311.13,
+            "E4": 329.63, "F4": 349.23, "Fs4": 369.99, "G4": 392.00,
+            "Gs4": 415.30, "A4": 440.00, "As4": 466.16, "B4": 493.88,
+            "C5": 523.25
+        };
+
+        function playNote(note) {
+            if (ctx.state === 'suspended') ctx.resume();
+
+            const osc = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+            const filter = ctx.createBiquadFilter();
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(frequencies[note], ctx.currentTime);
+
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(1000, ctx.currentTime); 
+            filter.Q.value = 1;
+
+            osc.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(ctx.destination);
+
+            const now = ctx.currentTime;
+            const volume = 0.6;
+
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(volume, now + 0.02);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + 2);
+
+            osc.start(now);
+            osc.stop(now + 2);
+        }
+
+        const keys = document.querySelectorAll('.key');
+
+        function activateKey(key) {
+            key.classList.add('active');
+            setTimeout(() => key.classList.remove('active'), 100);
+            playNote(key.dataset.note);
+        }
+
+        keys.forEach(k => {
+            k.addEventListener('mousedown', () => activateKey(k));
+            k.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                activateKey(k);
+            });
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.repeat) return;
+            const key = document.querySelector(`.key[data-key="${e.key}"]`);
+            if (key) activateKey(key);
+        });
+    </script>
+</body>
+</html>
